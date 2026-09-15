@@ -1,0 +1,231 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ========================================================
+    // BASIC HELPERS
+    // ========================================================
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function isMatchMember() {
+      return signedIn()
+        && request.auth.uid in resource.data.userIds;
+    }
+
+    function isMatchMemberCreate() {
+      return signedIn()
+        && request.auth.uid in request.resource.data.userIds;
+    }
+
+
+    // ========================================================
+    // USERS
+    // ========================================================
+
+    match /users/{uid} {
+
+      // Signed-in users can discover public profiles.
+      allow read: if signedIn();
+
+      // A user can create their own profile.
+      allow create: if isSelf(uid)
+        && request.resource.data.isActive == true
+        && !request.resource.data.keys().hasAny([
+          "isAdmin",
+          "isVerified",
+          "subscription"
+        ]);
+
+      // Users can update their own profile.
+      // Protected fields cannot be changed from the browser.
+      allow update: if isSelf(uid)
+        && !request.resource.data.diff(resource.data)
+          .affectedKeys()
+          .hasAny([
+            "isAdmin",
+            "isVerified",
+            "subscription"
+          ]);
+
+      allow delete: if isSelf(uid);
+
+
+      // ======================================================
+      // LIKES
+      // ======================================================
+
+      match /likes/{targetUid} {
+
+        // User can see their own likes.
+        allow read: if isSelf(uid);
+
+        // User can only create a like from themselves.
+        allow create: if isSelf(uid)
+          && targetUid != uid
+          && request.resource.data.keys().hasOnly([
+            "createdAt"
+          ]);
+
+        allow delete: if isSelf(uid);
+
+        allow update: if false;
+      }
+
+
+      // ======================================================
+      // BLOCKS
+      // ======================================================
+
+      match /blocks/{blockedUid} {
+
+        allow read: if isSelf(uid);
+
+        allow create: if isSelf(uid)
+          && blockedUid != uid
+          && request.resource.data.keys().hasOnly([
+            "createdAt"
+          ]);
+
+        allow delete: if isSelf(uid);
+
+        allow update: if false;
+      }
+    }
+
+
+    // ========================================================
+    // MATCHES
+    // ========================================================
+
+    match /matches/{matchId} {
+
+      // Only people inside the match can read it.
+      allow read: if isMatchMember();
+
+      // IMPORTANT:
+      // Matches are created ONLY by the Cloud Function.
+      // The browser cannot manufacture a match.
+      allow create: if false;
+
+      // Members can update limited match fields.
+      allow update: if isMatchMember()
+        && request.resource.data.userIds == resource.data.userIds
+        && request.resource.data.createdAt == resource.data.createdAt
+        && !request.resource.data.diff(resource.data)
+          .affectedKeys()
+          .hasAny([
+            "userIds",
+            "createdAt"
+          ]);
+
+      // Match deletion is disabled from the client.
+      allow delete: if false;
+
+
+      // ======================================================
+      // MATCH MESSAGES
+      // ======================================================
+
+      match /messages/{messageId} {
+
+        // Only members of the match can read messages.
+        allow read: if isMatchMember();
+
+        // Only a member can send a message,
+        // and senderId must equal their authenticated UID.
+        allow create: if isMatchMemberCreate()
+          && request.resource.data.senderId == request.auth.uid
+          && request.resource.data.keys().hasOnly([
+            "senderId",
+            "text",
+            "createdAt"
+          ])
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 1000;
+
+        // Messages cannot be edited.
+        allow update: if false;
+
+        // Messages cannot be deleted by the client.
+        allow delete: if false;
+      }
+    }
+
+
+    // ========================================================
+    // REPORTS
+    // ========================================================
+
+    match /reports/{reportId} {
+
+      // Any signed-in user can submit a report.
+      allow create: if signedIn()
+        && request.resource.data.reporterId == request.auth.uid
+        && request.resource.data.keys().hasOnly([
+          "reporterId",
+          "targetId",
+          "reason",
+          "createdAt",
+          "status"
+        ])
+        && request.resource.data.targetId is string
+        && request.resource.data.reason is string
+        && request.resource.data.reason.size() > 0
+        && request.resource.data.reason.size() <= 500
+        && request.resource.data.status == "pending";
+
+      // Reports are private from normal users.
+      allow read: if false;
+
+      // Reports must be handled by secure backend/admin tools.
+      allow update: if false;
+      allow delete: if false;
+    }
+
+
+    // ========================================================
+    // SUBSCRIPTIONS
+    // ========================================================
+
+    match /subscriptions/{uid} {
+
+      // A user can read their own subscription status.
+      allow read: if isSelf(uid);
+
+      // Browser cannot create/change subscription status.
+      allow create, update, delete: if false;
+    }
+
+
+    // ========================================================
+    // ADMINS
+    // ========================================================
+
+    match /admins/{uid} {
+
+      // An admin record cannot be created or changed from
+      // the browser.
+      allow read: if isSelf(uid);
+
+      allow create, update, delete: if false;
+    }
+
+
+    // ========================================================
+    // DENY EVERYTHING ELSE
+    // ========================================================
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
