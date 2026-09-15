@@ -1,0 +1,31 @@
+{
+  "name": "TrueVow — Serious Dating",
+  "short_name": "TrueVow",
+  "description": "Serious dating for people looking for something real.",
+  "start_url": "/TrueVow/",
+  "scope": "/TrueVow/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#FF3B6B",
+  "background_color": "#FFFFFF",
+  "icons": [
+    {
+      "src": "icon/ms-icon-144x144.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon/ms-icon-310x310.png",
+      "sizes": "310x310",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon/truevow-icon-1024.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
