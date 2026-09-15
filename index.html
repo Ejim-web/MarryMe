@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#f43f5e">
+  <meta name="description" content="MarryMe - The serious dating app for marriage-minded singles.">
+  <title>MarryMe · Serious Dating</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    /* base improvements */
+    * { -webkit-tap-highlight-color: transparent; }
+    body { 
+      background: radial-gradient(circle at 20% 20%, #1e293b, #0f172a);
+      font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0; padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      overscroll-behavior: none;
+    }
+
+    /* container — emulates a high-end phone frame */
+    .app-shell {
+      width: 100%;
+      max-width: 420px;
+      height: 100vh;
+      max-height: 880px;
+      background: #f8fafc;
+      border-radius: 42px;
+      box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.6), 0 0 0 8px #1e293b;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+      transition: all 0.2s;
+    }
+    @media (max-width: 480px) {
+      .app-shell {
+        max-width: 100%;
+        height: 100vh;
+        max-height: none;
+        border-radius: 0;
+        box-shadow: none;
+      }
+    }
+
+    /* card-stack mechanics */
+    .card-stack {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      perspective: 1200px;
+    }
+    .card {
+      position: absolute;
+      inset: 0;
+      border-radius: 32px;
+      overflow: hidden;
+      transition: transform 0.45s cubic-bezier(0.23, 1, 0.32, 1), opacity 0.3s ease;
+      box-shadow: 0 20px 35px -8px rgba(0, 0, 0, 0.3);
+      will-change: transform, opacity;
+      cursor: grab;
+      user-select: none;
+    }
+    .card:active { cursor: grabbing; }
+    .card.swipe-left { transform: translateX(-150%) rotate(-28deg) !important; opacity: 0; }
+    .card.swipe-right { transform: translateX(150%) rotate(28deg) !important; opacity: 0; }
+    .card.swipe-up { transform: translateY(-150%) !important; opacity: 0; }
+
+    /* tabs */
+    .tab-content {
+      display: none;
+      flex-direction: column;
+      height: 100%;
+      width: 100%;
+      overflow: hidden;
+    }
+    .tab-content.active { display: flex; }
+
+    /* nav active state */
+    .nav-btn { transition: color 0.15s, transform 0.1s; }
+    .nav-btn:active { transform: scale(0.92); }
+
+    /* match modal */
+    #match-modal {
+      transition: opacity 0.25s ease, visibility 0.25s;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+    #match-modal.visible {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+    }
+
+    /* scrollbars */
+    .scrollable { overflow-y: auto; scrollbar-width: thin; scrollbar-color: #cbd5e1 #f1f5f9; }
+    .scrollable::-webkit-scrollbar { width: 5px; }
+    .scrollable::-webkit-scrollbar-track { background: #f1f5f9; }
+    .scrollable::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+    /* enhanced match card */
+    .match-card {
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .match-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 20px -8px rgba(0, 0, 0, 0.2);
+    }
+
+    /* skeleton / loading state */
+    .skeleton {
+      background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+    }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+    /* profile picture shimmer */
+    .avatar-shimmer {
+      background: linear-gradient(135deg, #f43f5e20, #f43f5e40);
+      background-size: 200% 200%;
+      animation: gradientPulse 3s ease infinite;
+    }
+    @keyframes gradientPulse {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    /* badge dot */
+    .badge-dot {
+      box-shadow: 0 0 0 2px white;
+      animation: pulseDot 1.8s infinite;
+    }
+    @keyframes pulseDot {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.2); opacity: 0.8; }
+    }
+
+    /* utility */
+    .no-select { user-select: none; -webkit-user-select: none; }
+  </style>
+</head>
+<body>
+  <div class="app-shell" id="appShell">
+    <!-- ========== HEADER ========== -->
+    <header class="h-16 px-5 flex items-center justify-between border-b border-slate-100 bg-white/90 backdrop-blur-sm z-20 shrink-0">
+      <div class="flex items-center gap-2.5">
+        <div class="w-9 h-9 rounded-full bg-gradient-to-tr from-rose-500 to-pink-500 flex items-center justify-center text-white text-lg shadow-md shadow-rose-200">💍</div>
+        <span class="text-xl font-black bg-gradient-to-r from-rose-500 to-pink-600 bg-clip-text text-transparent tracking-tight">MarryMe</span>
+      </div>
+      <button id="filterBtn" class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 transition active:scale-95" aria-label="Filter preferences">
+        <i class="fa-solid fa-sliders text-sm"></i>
+      </button>
+    </header>
+
+    <!-- ========== MAIN ========== -->
+    <main class="flex-1 relative overflow-hidden bg-slate-100/80">
+      
+      <!-- DISCOVER -->
+      <section id="tab-discover" class="tab-content active p-4 justify-between h-full">
+        <div id="card-container" class="card-stack flex-1 relative min-h-0"></div>
+        <div class="h-20 flex items-center justify-center gap-5 pt-2 shrink-0">
+          <button id="swipeLeftBtn" class="w-14 h-14 rounded-full bg-white shadow-lg shadow-slate-200 flex items-center justify-center text-rose-400 hover:text-rose-500 hover:scale-110 active:scale-90 transition border border-slate-100 text-xl" aria-label="Pass">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+          <button id="swipeUpBtn" class="w-12 h-12 rounded-full bg-white shadow-lg shadow-slate-200 flex items-center justify-center text-sky-400 hover:text-sky-500 hover:scale-110 active:scale-90 transition border border-slate-100 text-lg" aria-label="Super like">
+            <i class="fa-solid fa-star"></i>
+          </button>
+          <button id="swipeRightBtn" class="w-14 h-14 rounded-full bg-gradient-to-r from-rose-500 to-pink-500 shadow-lg shadow-pink-200 flex items-center justify-center text-white hover:scale-110 active:scale-90 transition text-xl" aria-label="Like">
+            <i class="fa-solid fa-heart"></i>
+          </button>
+        </div>
+      </section>
+
+      <!-- MATCHES -->
+      <section id="tab-matches" class="tab-content p-4 h-full scrollable">
+        <div class="shrink-0 mb-4">
+          <h2 class="text-xl font-extrabold text-slate-800 tracking-tight">Your Matches</h2>
+          <p class="text-xs text-slate-400 mt-0.5">People ready to build a future together</p>
+        </div>
+        <div class="grid grid-cols-2 gap-3 pb-4" id="matches-grid"></div>
+      </section>
+
+      <!-- CHAT -->
+      <section id="tab-chat" class="tab-content h-full bg-white">
+        <div class="p-4 border-b border-slate-100 shrink-0">
+          <h2 class="text-xl font-extrabold text-slate-800 tracking-tight">Messages</h2>
+          <p class="text-xs text-slate-400 mt-0.5">Conversations with your matches</p>
+        </div>
+        <div class="divide-y divide-slate-100 overflow-y-auto flex-1 scrollable" id="chat-list"></div>
+      </section>
+
+      <!-- PROFILE -->
+      <section id="tab-profile" class="tab-content p-5 h-full scrollable bg-white">
+        <div class="flex flex-col items-center text-center mt-1">
+          <div class="relative">
+            <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80" class="w-28 h-28 rounded-full object-cover border-4 border-rose-500 shadow-xl" alt="Your profile">
+            <button class="absolute bottom-0 right-0 bg-rose-500 text-white w-8 h-8 rounded-full flex items-center justify-center shadow-lg shadow-rose-200 hover:bg-rose-600 transition active:scale-90" aria-label="Change photo">
+              <i class="fa-solid fa-camera text-xs"></i>
+            </button>
+          </div>
+          <h3 class="text-xl font-extrabold mt-3 text-slate-800">Sarah Jenkins, 27</h3>
+          <p class="text-xs text-slate-400">Architect • Looking for Marriage 💍</p>
+          <div class="flex gap-2 mt-2">
+            <span class="bg-rose-100 text-rose-600 text-[10px] font-semibold px-2.5 py-0.5 rounded-full">Verified</span>
+            <span class="bg-slate-100 text-slate-500 text-[10px] font-semibold px-2.5 py-0.5 rounded-full">Active today</span>
+          </div>
+        </div>
+
+        <div class="mt-6 space-y-3">
+          <div class="p-4 rounded-2xl bg-gradient-to-r from-rose-50 to-pink-50 border border-rose-100 flex justify-between items-center shadow-sm">
+            <div>
+              <h4 class="font-bold text-rose-600 text-sm">MarryMe Gold</h4>
+              <p class="text-xs text-rose-400">See who wants to marry you</p>
+            </div>
+            <button class="bg-rose-500 hover:bg-rose-600 text-white px-4 py-1.5 rounded-xl text-xs font-bold shadow transition active:scale-95">Upgrade</button>
+          </div>
+          <div class="space-y-1 pt-1">
+            <button class="w-full p-3.5 rounded-xl bg-slate-50 hover:bg-slate-100 flex items-center justify-between text-sm font-semibold text-slate-700 transition">
+              <span><i class="fa-solid fa-user-pen mr-3 text-slate-400 w-4"></i>Edit Profile</span>
+              <i class="fa-solid fa-chevron-right text-xs text-slate-300"></i>
+            </button>
+            <button class="w-full p-3.5 rounded-xl bg-slate-50 hover:bg-slate-100 flex items-center justify-between text-sm font-semibold text-slate-700 transition">
+              <span><i class="fa-solid fa-sliders mr-3 text-slate-400 w-4"></i>Marriage Intentions</span>
+              <i class="fa-solid fa-chevron-right text-xs text-slate-300"></i>
+            </button>
+            <button class="w-full p-3.5 rounded-xl bg-slate-50 hover:bg-slate-100 flex items-center justify-between text-sm font-semibold text-slate-700 transition">
+              <span><i class="fa-solid fa-shield-halved mr-3 text-slate-400 w-4"></i>Verification</span>
+              <i class="fa-solid fa-chevron-right text-xs text-slate-300"></i>
+            </button>
+            <button class="w-full p-3.5 rounded-xl bg-slate-50 hover:bg-slate-100 flex items-center justify-between text-sm font-semibold text-slate-700 transition">
+              <span><i class="fa-solid fa-gear mr-3 text-slate-400 w-4"></i>Settings</span>
+              <i class="fa-solid fa-chevron-right text-xs text-slate-300"></i>
+            </button>
+          </div>
+        </div>
+        <div class="h-6"></div>
+      </section>
+
+      <!-- MATCH MODAL (production safe) -->
+      <div id="match-modal" class="absolute inset-0 bg-slate-900/90 backdrop-blur-md flex flex-col items-center justify-center p-6 z-50 text-center text-white">
+        <div class="text-5xl mb-2 animate-bounce">💍</div>
+        <h2 class="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-rose-400 to-pink-400">It's a Match!</h2>
+        <p class="text-slate-300 text-sm mt-2 mb-6 max-w-[260px]" id="match-text">You and Elena both want to build a future together.</p>
+        <div class="flex items-center justify-center gap-4 mb-8">
+          <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80" class="w-20 h-20 rounded-full border-2 border-white object-cover shadow-xl" alt="You">
+          <div class="w-8 h-8 rounded-full bg-rose-500 flex items-center justify-center text-xs text-white shadow-lg"><i class="fa-solid fa-heart"></i></div>
+          <img id="match-avatar" src="" class="w-20 h-20 rounded-full border-2 border-white object-cover shadow-xl" alt="Match">
+        </div>
+        <button id="modalChatBtn" class="w-full py-3.5 rounded-full bg-gradient-to-r from-rose-500 to-pink-500 font-bold shadow-lg shadow-rose-500/30 mb-3 hover:brightness-110 transition active:scale-[0.98]">Send Message</button>
+        <button id="modalCloseBtn" class="w-full py-3 rounded-full bg-slate-800 text-slate-300 font-semibold border border-slate-700 hover:bg-slate-700 transition active:scale-[0.98]">Keep Swiping</button>
+      </div>
+    </main>
+
+    <!-- ========== BOTTOM NAV ========== -->
+    <nav class="h-16 bg-white/95 backdrop-blur-sm border-t border-slate-100 flex items-center justify-around px-2 z-20 shrink-0">
+      <button data-tab="discover" class="nav-btn flex flex-col items-center text-rose-500 transition">
+        <i class="fa-solid fa-layer-group text-lg"></i>
+        <span class="text-[10px] font-bold mt-1 tracking-wide">Discover</span>
+      </button>
+      <button data-tab="matches" class="nav-btn flex flex-col items-center text-slate-400 transition">
+        <i class="fa-solid fa-heart text-lg"></i>
+        <span class="text-[10px] font-bold mt-1 tracking-wide">Matches</span>
+      </button>
+      <button data-tab="chat" class="nav-btn flex flex-col items-center text-slate-400 relative transition">
+        <i class="fa-solid fa-comments text-lg"></i>
+        <span class="text-[10px] font-bold mt-1 tracking-wide">Chat</span>
+        <span class="absolute top-1 right-3 w-2 h-2 rounded-full bg-rose-500 badge-dot"></span>
+      </button>
+      <button data-tab="profile" class="nav-btn flex flex-col items-center text-slate-400 transition">
+        <i class="fa-solid fa-user text-lg"></i>
+        <span class="text-[10px] font-bold mt-1 tracking-wide">Profile</span>
+      </button>
+    </nav>
+  </div>
+
+  <script>
+    (function(){
+      'use strict';
+
+      /* ========== DATA ========== */
+      const PROFILES = [
+        { id: 1, name: 'Elena Rostova', age: 26, job: 'Software Engineer', bio: 'Looking for a serious long-term partner who loves travel, home-cooked dinners, and family values.', tags: ['Ready for Marriage', 'Non-Smoker', 'Family First'], img: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=600&q=80' },
+        { id: 2, name: 'David Miller', age: 29, job: 'Architect', bio: 'Passionate about design, sustainability, and finding someone to build a beautiful life with.', tags: ['Wants Kids', 'Dog Person', 'Active'], img: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=600&q=80' },
+        { id: 3, name: 'Sophia Chen', age: 28, job: 'Pediatrician', bio: 'Kind-hearted doctor looking for a companion to share quiet weekends, hiking trails, and wedding vows.', tags: ['Serious Only', 'Vegetarian', 'Hiker'], img: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=600&q=80' },
+        { id: 4, name: 'Marcus Vance', age: 31, job: 'Financial Analyst', bio: 'Financially stable, family-oriented, and ready to settle down with the right person.', tags: ['Marriage Minded', 'Wine Lover', 'Traveler'], img: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=600&q=80' },
+        { id: 5, name: 'Olivia Park', age: 27, job: 'Marketing Director', bio: 'Ambitious and warm, looking for a partner who values communication and laughter.', tags: ['Marriage Minded', 'Foodie', 'Art Lover'], img: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=600&q=80' }
+      ];
+
+      let currentIndex = 0;
+      const matchedProfiles = [PROFILES[0]]; // start with Elena as a pre-match
+      let isAnimating = false;
+
+      /* ========== DOM refs ========== */
+      const cardContainer = document.getElementById('card-container');
+      const matchesGrid = document.getElementById('matches-grid');
+      const chatList = document.getElementById('chat-list');
+      const matchModal = document.getElementById('match-modal');
+      const matchAvatar = document.getElementById('match-avatar');
+      const matchText = document.getElementById('match-text');
+      const filterBtn = document.getElementById('filterBtn');
+
+      /* ========== RENDER CARDS ========== */
+      function renderCards() {
+        cardContainer.innerHTML = '';
+        if (currentIndex >= PROFILES.length) {
+          cardContainer.innerHTML = `
+            <div class="h-full flex flex-col items-center justify-center text-center p-6 bg-white rounded-3xl border border-slate-200 shadow-sm">
+              <div class="text-5xl mb-3">✨</div>
+              <h3 class="text-lg font-bold text-slate-800">No More Profiles Nearby</h3>
+              <p class="text-xs text-slate-400 mt-1 max-w-[200px]">Check back later or adjust your preference filters.</p>
+              <button id="resetProfilesBtn" class="mt-4 px-5 py-2.5 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-xs font-bold shadow transition active:scale-95">Reset Profiles</button>
+            </div>`;
+          document.getElementById('resetProfilesBtn')?.addEventListener('click', () => {
+            currentIndex = 0;
+            renderCards();
+          });
+          return;
+        }
+
+        // render from bottom to top
+        for (let i = PROFILES.length - 1; i >= currentIndex; i--) {
+          const p = PROFILES[i];
+          const card = document.createElement('div');
+          card.className = 'card bg-slate-900 text-white flex flex-col justify-end p-5';
+          card.style.zIndex = PROFILES.length - i;
+          card.id = `card-${i}`;
+          card.innerHTML = `
+            <img src="${p.img}" class="absolute inset-0 w-full h-full object-cover" alt="${p.name}" loading="lazy">
+            <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent"></div>
+            <div class="relative z-10 pointer-events-none">
+              <div class="flex items-baseline gap-2">
+                <h2 class="text-2xl font-black tracking-tight">${p.name}</h2>
+                <span class="text-xl font-light opacity-90">${p.age}</span>
+              </div>
+              <p class="text-xs text-rose-300 font-semibold mb-2"><i class="fa-solid fa-briefcase mr-1"></i>${p.job}</p>
+              <p class="text-xs text-slate-200 line-clamp-2 mb-3">${p.bio}</p>
+              <div class="flex flex-wrap gap-1.5">
+                ${p.tags.map(t => `<span class="bg-white/20 backdrop-blur-md text-[10px] px-2.5 py-1 rounded-full font-medium">${t}</span>`).join('')}
+              </div>
+            </div>`;
+          cardContainer.appendChild(card);
+        }
+      }
+
+      /* ========== SWIPE HANDLER ========== */
+      function swipe(dir) {
+        if (isAnimating) return;
+        if (currentIndex >= PROFILES.length) return;
+        const topCard = document.getElementById(`card-${currentIndex}`);
+        if (!topCard) return;
+
+        isAnimating = true;
+        topCard.classList.add(`swipe-${dir}`);
+        const profile = PROFILES[currentIndex];
+
+        if (dir === 'right' || dir === 'up') {
+          setTimeout(() => showMatchModal(profile), 180);
+        }
+
+        currentIndex++;
+        setTimeout(() => {
+          renderCards();
+          isAnimating = false;
+        }, 320);
+      }
+
+      /* ========== MATCH MODAL ========== */
+      function showMatchModal(profile) {
+        if (!matchedProfiles.some(p => p.id === profile.id)) {
+          matchedProfiles.push(profile);
+          renderMatches();
+          renderChats();
+        }
+        matchAvatar.src = profile.img;
+        matchAvatar.alt = profile.name;
+        matchText.innerText = `You and ${profile.name.split(' ')[0]} both want to build a future together.`;
+        matchModal.classList.add('visible');
+      }
+
+      function closeMatchModal() {
+        matchModal.classList.remove('visible');
+      }
+
+      /* ========== TAB SWITCHING ========== */
+      function switchTab(tabId) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.nav-btn').forEach(el => {
+          el.classList.remove('text-rose-500');
+          el.classList.add('text-slate-400');
+        });
+
+        const tabEl = document.getElementById(`tab-${tabId}`);
+        if (tabEl) tabEl.classList.add('active');
+
+        const navBtn = document.querySelector(`.nav-btn[data-tab="${tabId}"]`);
+        if (navBtn) {
+          navBtn.classList.remove('text-slate-400');
+          navBtn.classList.add('text-rose-500');
+        }
+      }
+
+      /* ========== RENDER MATCHES ========== */
+      function renderMatches() {
+        matchesGrid.innerHTML = matchedProfiles.map(p => `
+          <div class="match-card relative h-44 rounded-2xl overflow-hidden shadow-md group border border-slate-200 cursor-pointer">
+            <img src="${p.img}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" alt="${p.name}">
+            <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+            <div class="absolute bottom-2 left-2 right-2 text-white">
+              <p class="font-bold text-xs truncate">${p.name}, ${p.age}</p>
+              <span class="text-[9px] text-rose-300 font-medium">💍 Serious Match</span>
+            </div>
+          </div>`).join('');
+      }
+
+      /* ========== RENDER CHATS ========== */
+      function renderChats() {
+        chatList.innerHTML = matchedProfiles.map((p, idx) => `
+          <div class="p-4 flex items-center gap-3 hover:bg-slate-50 cursor-pointer transition active:bg-slate-100" data-chat-id="${p.id}">
+            <div class="relative shrink-0">
+              <img src="${p.img}" class="w-12 h-12 rounded-full object-cover" alt="${p.name}">
+              <span class="absolute bottom-0 right-0 w-3 h-3 bg-emerald-400 rounded-full border-2 border-white"></span>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex justify-between items-baseline">
+                <h4 class="font-bold text-sm text-slate-800 truncate">${p.name}</h4>
+                <span class="text-[10px] text-slate-400 shrink-0 ml-2">${idx === 0 ? '12:34 PM' : 'Yesterday'}</span>
+              </div>
+              <p class="text-xs text-slate-500 truncate mt-0.5">${idx === 0 ? "Hey Sarah! It's so nice to connect with you." : "Looking forward to learning more about you!"}</p>
+            </div>
+            ${idx === 0 ? '<span class="w-2 h-2 rounded-full bg-rose-500 shrink-0"></span>' : ''}
+          </div>`).join('');
+
+        // attach click handlers to chat items
+        chatList.querySelectorAll('[data-chat-id]').forEach(el => {
+          el.addEventListener('click', () => {
+            const id = el.dataset.chatId;
+            const profile = PROFILES.find(p => p.id == id) || matchedProfiles.find(p => p.id == id);
+            if (profile) alert(`💬 Opening conversation with ${profile.name}`);
+          });
+        });
+      }
+
+      /* ========== EVENT LISTENERS ========== */
+      document.getElementById('swipeLeftBtn').addEventListener('click', () => swipe('left'));
+      document.getElementById('swipeRightBtn').addEventListener('click', () => swipe('right'));
+      document.getElementById('swipeUpBtn').addEventListener('click', () => swipe('up'));
+
+      document.getElementById('modalChatBtn').addEventListener('click', () => {
+        closeMatchModal();
+        switchTab('chat');
+      });
+      document.getElementById('modalCloseBtn').addEventListener('click', closeMatchModal);
+
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const tab = btn.dataset.tab;
+          if (tab) switchTab(tab);
+        });
+      });
+
+      filterBtn.addEventListener('click', () => {
+        alert('🔍 Filter preferences:\n• Age 24–35\n• Distance < 50mi\n• Serious Relationship');
+      });
+
+      // swipe gesture (touch + mouse)
+      let touchStartX = 0, touchStartY = 0, touchDeltaX = 0, touchDeltaY = 0;
+      const SWIPE_THRESHOLD = 60;
+
+      cardContainer.addEventListener('touchstart', (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+        touchStartY = e.changedTouches[0].screenY;
+      }, { passive: true });
+
+      cardContainer.addEventListener('touchend', (e) => {
+        touchDeltaX = e.changedTouches[0].screenX - touchStartX;
+        touchDeltaY = e.changedTouches[0].screenY - touchStartY;
+        if (Math.abs(touchDeltaX) > Math.abs(touchDeltaY)) {
+          if (touchDeltaX > SWIPE_THRESHOLD) swipe('right');
+          else if (touchDeltaX < -SWIPE_THRESHOLD) swipe('left');
+        } else {
+          if (touchDeltaY < -SWIPE_THRESHOLD) swipe('up');
+        }
+      }, { passive: true });
+
+      // mouse drag support (desktop)
+      let mouseDown = false, mouseStartX = 0, mouseStartY = 0;
+      cardContainer.addEventListener('mousedown', (e) => {
+        mouseDown = true;
+        mouseStartX = e.screenX;
+        mouseStartY = e.screenY;
+      });
+      window.addEventListener('mouseup', (e) => {
+        if (!mouseDown) return;
+        mouseDown = false;
+        const dx = e.screenX - mouseStartX;
+        const dy = e.screenY - mouseStartY;
+        if (Math.abs(dx) > Math.abs(dy)) {
+          if (dx > SWIPE_THRESHOLD) swipe('right');
+          else if (dx < -SWIPE_THRESHOLD) swipe('left');
+        } else {
+          if (dy < -SWIPE_THRESHOLD) swipe('up');
+        }
+      });
+
+      /* ========== INIT ========== */
+      function init() {
+        renderCards();
+        renderMatches();
+        renderChats();
+        // ensure discover tab active
+        switchTab('discover');
+      }
+
+      init();
+
+      // expose swipe for debugging (remove in real production)
+      window.swipe = swipe;
+    })();
+  </script>
+</body>
+</html>
