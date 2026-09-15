@@ -1,0 +1,1320 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#ff3b6b">
+<title>MarryMe — Serious Dating</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #111827; font-family: Inter, system-ui, -apple-system, sans-serif; }
+  #app { max-width: 520px; min-height: 100vh; margin: auto; background: #fff; position: relative; }
+  .hide { display: none !important; }
+  .tab { display: none; }
+  .tab.active { display: block; }
+  .pink { color: #ff3b6b; }
+  .bgpink { background: #ff3b6b; }
+  button { touch-action: manipulation; cursor: pointer; }
+  .navbtn { color: #9ca3af; }
+  .navbtn.active { color: #ff3b6b; }
+  .modal { position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 50; display: flex; align-items: flex-end; justify-content: center; }
+  .sheet { width: min(520px, 100%); max-height: 92vh; overflow: auto; background: #fff; border-radius: 24px 24px 0 0; padding: 20px; }
+  input, select, textarea { width: 100%; border: 1px solid #ddd; border-radius: 12px; padding: 11px 12px; outline: none; background: #fff; font-size: 15px; }
+  input:focus, select:focus, textarea:focus { border-color: #ff3b6b; }
+  .toast { position: fixed; left: 50%; bottom: 85px; transform: translateX(-50%); z-index: 99999; background: #111827; color: #fff; padding: 13px 18px; border-radius: 14px; font-size: 14px; max-width: 90%; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,.3); }
+  .avatar { width: 110px; height: 110px; border-radius: 50%; object-fit: cover; border: 4px solid #ff3b6b; background: #f3f4f6; }
+  .progress-bar { height: 6px; background: #f3f4f6; border-radius: 999px; overflow: hidden; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, #ff3b6b, #ff7a9c); transition: width 0.3s; }
+  .ring-logo { display: flex; align-items: center; justify-content: center; background: #ff3b6b; border-radius: 16px; box-shadow: 0 8px 20px -6px rgba(255, 59, 107, 0.5); }
+  .ring-logo.small { width: 36px; height: 36px; }
+  .ring-logo.large { width: 80px; height: 80px; border-radius: 24px; }
+  .photo-tile { position: relative; aspect-ratio: 1/1; border-radius: 12px; overflow: hidden; background: #f3f4f6; }
+  .photo-tile img { width: 100%; height: 100%; object-fit: cover; }
+  .photo-tile .del { position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,.6); color: #fff; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; border: none; }
+  .upload-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 14px; border-radius: 12px; border: 2px dashed #ff3b6b; background: #fff1f4; color: #ff3b6b; font-weight: 700; font-size: 14px; cursor: pointer; }
+  #matchModal { background: linear-gradient(180deg, #0f172a 0%, #1e1b2e 100%) !important; }
+  #matchModal .sheet { background: transparent !important; color: #fff; text-align: center; }
+  .match-title { color: #ff3b6b; font-size: 32px; font-weight: 900; letter-spacing: -0.5px; }
+  .match-subtitle { color: #cbd5e1; font-size: 14px; margin-top: 8px; }
+  .match-avatars { display: flex; justify-content: center; align-items: center; gap: 16px; margin: 24px 0; }
+  .match-avatars img { width: 90px; height: 90px; border-radius: 50%; object-fit: cover; border: 3px solid #fff; background: #334155; }
+  .match-heart { width: 34px; height: 34px; border-radius: 50%; background: #ff3b6b; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 14px; box-shadow: 0 4px 12px rgba(255,59,107,0.5); }
+  .btn-match-primary { width: 100%; padding: 16px; border-radius: 999px; background: linear-gradient(90deg, #ff3b6b, #ff7a9c); color: #fff; font-weight: 700; border: none; font-size: 16px; margin-bottom: 12px; box-shadow: 0 8px 20px -4px rgba(255,59,107,0.5); }
+  .btn-match-secondary { width: 100%; padding: 16px; border-radius: 999px; background: rgba(30,41,59,0.8); color: #cbd5e1; font-weight: 600; border: 1px solid #334155; font-size: 16px; }
+  .debug-box { background: #1f2937; color: #10b981; font-family: monospace; font-size: 11px; padding: 10px; border-radius: 8px; margin-top: 12px; white-space: pre-wrap; max-height: 200px; overflow: auto; }
+</style>
+</head>
+
+<body>
+<div id="app">
+
+  <!-- AUTH SCREEN -->
+  <div id="authScreen" class="min-h-screen px-5 py-10 flex items-center">
+    <div class="w-full">
+      <div class="text-center mb-8">
+        <div class="ring-logo large mx-auto mb-4">
+          <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+            <circle cx="24" cy="26" r="11" stroke="white" stroke-width="3" fill="none"/>
+            <path d="M24 8 L20 14 L24 20 L28 14 Z" fill="#a5f3fc" stroke="white" stroke-width="1.5" stroke-linejoin="round"/>
+            <path d="M20 14 L24 20 L28 14" stroke="white" stroke-width="1.5" fill="none" stroke-linejoin="round"/>
+            <path d="M20 14 L28 14" stroke="white" stroke-width="1.5"/>
+          </svg>
+        </div>
+        <h1 class="text-3xl font-extrabold">MarryMe</h1>
+        <p class="text-gray-500 mt-2">Serious dating for people looking for something real.</p>
+      </div>
+
+      <form id="loginForm" class="space-y-3">
+        <input id="loginEmail" type="email" placeholder="Email" autocomplete="email" required>
+        <input id="loginPassword" type="password" placeholder="Password" autocomplete="current-password" required>
+        <button type="submit" class="w-full bgpink text-white py-3 rounded-xl font-bold">Log in</button>
+      </form>
+
+      <button id="googleLoginBtn" class="w-full border py-3 rounded-xl font-bold mt-3">
+        <i class="fa-brands fa-google mr-2"></i> Continue with Google
+      </button>
+      <button id="forgotPasswordBtn" class="text-sm pink w-full mt-3">Forgot password?</button>
+
+      <p class="text-center text-sm text-gray-500 mt-4">
+        New here? <button id="showSignup" class="pink font-bold">Create account</button>
+      </p>
+
+      <form id="signupForm" class="space-y-3 hide mt-6">
+        <input id="signupName" placeholder="Full name" autocomplete="name" required>
+        <input id="signupEmail" type="email" placeholder="Email" autocomplete="email" required>
+        <input id="signupPassword" type="password" placeholder="Password (6+ characters)" autocomplete="new-password" required>
+        <div>
+          <label class="text-sm text-gray-500 mb-1 block">Date of birth</label>
+          <input id="signupDob" type="date" required>
+        </div>
+        <label class="flex gap-2 text-sm text-gray-600 items-start">
+          <input id="signupAdult" type="checkbox" class="w-4 mt-0.5" required>
+          <span>I confirm I am 18 or older and agree to use MarryMe responsibly.</span>
+        </label>
+        <button type="submit" class="w-full bgpink text-white py-3 rounded-xl font-bold">Create account</button>
+        <p class="text-center text-sm text-gray-500">
+          Already registered? <button type="button" id="showLogin" class="pink font-bold">Log in</button>
+        </p>
+      </form>
+
+      <div id="debugBox" class="debug-box hide"></div>
+    </div>
+  </div>
+
+  <!-- MAIN APP -->
+  <div id="appScreen" class="hide">
+    <header class="sticky top-0 z-20 bg-white/95 backdrop-blur border-b px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <div class="ring-logo small">
+          <svg width="22" height="22" viewBox="0 0 48 48" fill="none">
+            <circle cx="24" cy="26" r="11" stroke="white" stroke-width="3" fill="none"/>
+            <path d="M24 8 L20 14 L24 20 L28 14 Z" fill="#a5f3fc" stroke="white" stroke-width="1.5" stroke-linejoin="round"/>
+            <path d="M20 14 L24 20 L28 14" stroke="white" stroke-width="1.5" fill="none" stroke-linejoin="round"/>
+            <path d="M20 14 L28 14" stroke="white" stroke-width="1.5"/>
+          </svg>
+        </div>
+        <b class="text-xl">MarryMe</b>
+      </div>
+      <button id="filterBtn" onclick="openFilters()" class="w-10 h-10 rounded-full bg-gray-100">
+        <i class="fa-solid fa-sliders"></i>
+      </button>
+    </header>
+
+    <main class="px-4 pb-24">
+      <section id="discoverTab" class="tab active pt-4">
+        <div class="flex items-center justify-between mb-3">
+          <div>
+            <h2 class="text-xl font-bold">Discover</h2>
+            <p class="text-xs text-gray-500">Find people who share your intentions.</p>
+          </div>
+          <span id="discoverCount" class="text-xs text-gray-400"></span>
+        </div>
+        <div id="discoverList"></div>
+      </section>
+
+      <section id="matchesTab" class="tab pt-4">
+        <h2 class="text-xl font-bold mb-4">Your Matches</h2>
+        <div id="matchesList" class="grid grid-cols-2 gap-3"></div>
+      </section>
+
+      <section id="chatTab" class="tab pt-4">
+        <h2 class="text-xl font-bold mb-4">Messages</h2>
+        <div id="chatList" class="space-y-2"></div>
+      </section>
+
+      <section id="profileTab" class="tab pt-4">
+        <div id="myProfile"></div>
+      </section>
+    </main>
+
+    <nav class="fixed bottom-0 left-0 right-0 z-30 bg-white border-t">
+      <div class="max-w-[520px] mx-auto grid grid-cols-4">
+        <button class="navbtn active py-3" data-target="discoverTab">
+          <i class="fa-solid fa-heart text-lg"></i>
+          <span class="block text-[11px]">Discover</span>
+        </button>
+        <button class="navbtn py-3" data-target="matchesTab">
+          <i class="fa-solid fa-people-arrows text-lg"></i>
+          <span class="block text-[11px]">Matches</span>
+        </button>
+        <button class="navbtn py-3" data-target="chatTab">
+          <i class="fa-solid fa-message text-lg"></i>
+          <span class="block text-[11px]">Messages</span>
+        </button>
+        <button class="navbtn py-3" data-target="profileTab">
+          <i class="fa-solid fa-user text-lg"></i>
+          <span class="block text-[11px]">Profile</span>
+        </button>
+      </div>
+    </nav>
+  </div>
+</div>
+
+<!-- MATCH MODAL -->
+<div id="matchModal" class="modal hide">
+  <div class="sheet">
+    <div style="text-align:center; padding:20px 0;">
+      <svg width="64" height="64" viewBox="0 0 48 48" fill="none" style="margin:0 auto 12px; display:block;">
+        <circle cx="24" cy="26" r="11" stroke="#a5f3fc" stroke-width="3" fill="none"/>
+        <path d="M24 8 L20 14 L24 20 L28 14 Z" fill="#a5f3fc" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/>
+        <path d="M20 14 L24 20 L28 14" stroke="#fff" stroke-width="1.5" fill="none" stroke-linejoin="round"/>
+        <path d="M20 14 L28 14" stroke="#fff" stroke-width="1.5"/>
+      </svg>
+      <h2 class="match-title">It's a Match!</h2>
+      <p class="match-subtitle">
+        You and <b id="matchName" style="color:#fff;">them</b> both want to build a future together.
+      </p>
+      <div class="match-avatars">
+        <img id="matchMyPhoto" alt="">
+        <div class="match-heart"><i class="fa-solid fa-heart"></i></div>
+        <img id="matchTheirPhoto" alt="">
+      </div>
+      <button id="matchSendBtn" class="btn-match-primary">Send Message</button>
+      <button onclick="closeModal('matchModal')" class="btn-match-secondary">Keep Swiping</button>
+    </div>
+  </div>
+</div>
+
+<!-- PROFILE MODAL -->
+<div id="profileModal" class="modal hide">
+  <div class="sheet">
+    <div class="flex justify-between items-center mb-4">
+      <h3 class="text-xl font-bold">Edit your profile</h3>
+      <button onclick="closeModal('profileModal')">✕</button>
+    </div>
+    <form id="profileForm" class="space-y-3">
+      <div style="background:#fff1f4; border-radius:16px; padding:16px;">
+        <label style="font-weight:700; color:#ff3b6b; display:block; margin-bottom:10px;">
+          <i class="fa-solid fa-camera"></i> Profile photos (up to 6)
+        </label>
+        <div id="photoPreview" style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:10px;"></div>
+        <label for="profilePhotos" class="upload-btn">
+          <i class="fa-solid fa-plus"></i>
+          <span>Add photo</span>
+        </label>
+        <input id="profilePhotos" type="file" accept="image/*" multiple style="display:none;">
+      </div>
+
+      <input id="profileFullName" placeholder="Full name" required>
+      <div>
+        <label class="text-sm text-gray-500 mb-1 block">Date of birth</label>
+        <input id="profileDob" type="date" required>
+      </div>
+      <select id="profileGender">
+        <option value="">Gender</option>
+        <option>Woman</option>
+        <option>Man</option>
+        <option>Non-binary</option>
+      </select>
+      <input id="profileCity" placeholder="City">
+      <input id="profileOccupation" placeholder="Occupation">
+      <select id="profileIntention">
+        <option value="">Relationship intention</option>
+        <option>Marriage</option>
+        <option>Long-term relationship</option>
+        <option>Open to either</option>
+      </select>
+      <select id="profileChildren">
+        <option value="">Children preference</option>
+        <option>Want children</option>
+        <option>Don't want children</option>
+        <option>Open to children</option>
+        <option>Have children</option>
+      </select>
+      <textarea id="profileBio" rows="3" maxlength="500" placeholder="Tell people about yourself"></textarea>
+      <input id="profileInterests" placeholder="Interests, separated by commas">
+
+      <button type="submit" class="w-full bgpink text-white py-3 rounded-xl font-bold">Save profile</button>
+      <button type="button" id="logoutBtn" class="w-full border border-red-200 text-red-500 py-3 rounded-xl font-semibold">Log out</button>
+    </form>
+  </div>
+</div>
+
+<!-- FILTER MODAL -->
+<div id="filterModal" class="modal hide">
+  <div class="sheet">
+    <div class="flex justify-between items-center mb-4">
+      <h3 class="text-xl font-bold">Discover filters</h3>
+      <button onclick="closeModal('filterModal')">✕</button>
+    </div>
+    <form id="filterForm" class="space-y-3">
+      <div>
+        <label class="text-sm text-gray-500 mb-1 block">Minimum age</label>
+        <input id="filterMinAge" type="number" min="18" max="100" value="18">
+      </div>
+      <div>
+        <label class="text-sm text-gray-500 mb-1 block">Maximum age</label>
+        <input id="filterMaxAge" type="number" min="18" max="100" value="80">
+      </div>
+      <select id="filterGender">
+        <option value="">Any gender</option>
+        <option>Woman</option>
+        <option>Man</option>
+        <option>Non-binary</option>
+      </select>
+      <select id="filterIntention">
+        <option value="">Any intention</option>
+        <option>Marriage</option>
+        <option>Long-term relationship</option>
+        <option>Open to either</option>
+      </select>
+      <button type="submit" class="w-full bgpink text-white py-3 rounded-xl font-bold">Apply filters</button>
+    </form>
+  </div>
+</div>
+
+<!-- VIEW PROFILE MODAL -->
+<div id="viewProfileModal" class="modal hide">
+  <div class="sheet">
+    <div class="flex justify-between items-center mb-4">
+      <h3 class="text-xl font-bold">Profile</h3>
+      <button onclick="closeModal('viewProfileModal')">✕</button>
+    </div>
+    <div id="viewProfileContent"></div>
+  </div>
+</div>
+
+<!-- CHAT MODAL -->
+<div id="chatModal" class="modal hide">
+  <div class="sheet h-[90vh] flex flex-col">
+    <div class="flex justify-between items-center border-b pb-3">
+      <div>
+        <h3 id="chatTitle" class="font-bold">Chat</h3>
+        <p class="text-xs text-gray-400">Matched on MarryMe</p>
+      </div>
+      <button onclick="closeModal('chatModal')">✕</button>
+    </div>
+    <div id="chatMessages" class="flex-1 overflow-auto py-3 space-y-2"></div>
+    <form id="chatForm" class="flex gap-2 pt-2 border-t">
+      <input id="chatInput" maxlength="1000" placeholder="Write a message..." autocomplete="off">
+      <button type="submit" class="bgpink text-white w-12 rounded-xl">
+        <i class="fa-solid fa-paper-plane"></i>
+      </button>
+    </form>
+    <div class="flex gap-3 pt-3 justify-end">
+      <button onclick="blockCurrentChatUser()" class="text-xs text-red-500">Block</button>
+      <button onclick="reportCurrentChatUser()" class="text-xs text-red-500">Report</button>
+      <button onclick="unmatchCurrentChat()" class="text-xs text-gray-500">Unmatch</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+
+<script>
+// ============================================================
+// CONFIG
+// ============================================================
+const firebaseConfig = {
+  apiKey: "AIzaSyDiZsP0tcprL1xIhu-sCkGP-4Mfv_Rw9dg",
+  authDomain: "joblink-d3d17.firebaseapp.com",
+  projectId: "joblink-d3d17",
+  storageBucket: "joblink-d3d17.firebasestorage.app",
+  messagingSenderId: "462684482263",
+  appId: "1:462684482263:web:981dcbe334850ca3fe5e92",
+  measurementId: "G-WHHYBSKV93"
+};
+
+const CLOUDINARY_CLOUD_NAME = "zz8tri5x";
+const CLOUDINARY_UPLOAD_PRESET = "marryme_upload";
+
+// ============================================================
+// INIT
+// ============================================================
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+// ============================================================
+// STATE
+// ============================================================
+let currentUser = null;
+let currentProfile = null;
+let currentCandidate = null;
+let currentChatMatch = null;
+let unsubscribeChat = null;
+let unsubscribeMatches = null;
+let discoverCache = [];
+let currentFilters = { minAge: 18, maxAge: 80, gender: "", intention: "" };
+const seenMatchIds = new Set();
+let isSigningUp = false; // Prevents auth listener from clobbering during signup
+
+// ============================================================
+// HELPERS
+// ============================================================
+function $(id) { return document.getElementById(id); }
+function esc(v) {
+  if (v === null || v === undefined) return "";
+  return String(v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");
+}
+function toast(msg) {
+  const old = document.querySelector(".toast");
+  if (old) old.remove();
+  const div = document.createElement("div");
+  div.className = "toast";
+  div.textContent = msg;
+  document.body.appendChild(div);
+  setTimeout(() => div.remove(), 3500);
+}
+function openModal(id) { $(id)?.classList.remove("hide"); }
+function closeModal(id) { $(id)?.classList.add("hide"); }
+window.openModal = openModal;
+window.closeModal = closeModal;
+function ageFromDob(dob) {
+  if (!dob) return 0;
+  const b = new Date(dob);
+  if (isNaN(b.getTime())) return 0;
+  const t = new Date();
+  let a = t.getFullYear() - b.getFullYear();
+  const m = t.getMonth() - b.getMonth();
+  if (m < 0 || (m === 0 && t.getDate() < b.getDate())) a--;
+  return a;
+}
+function validAdult(dob) { return ageFromDob(dob) >= 18; }
+function fmtTime(ts) {
+  if (!ts) return "";
+  try {
+    const d = ts.toDate ? ts.toDate() : new Date(ts);
+    return d.toLocaleString([], { hour: "numeric", minute: "2-digit" });
+  } catch { return ""; }
+}
+function friendlyAuthError(err) {
+  const map = {
+    "auth/email-already-in-use": "That email is already registered.",
+    "auth/invalid-email": "That email isn't valid.",
+    "auth/weak-password": "Password must be at least 6 characters.",
+    "auth/wrong-password": "Wrong email or password.",
+    "auth/user-not-found": "No account with that email.",
+    "auth/too-many-requests": "Too many attempts. Try again later.",
+    "auth/popup-blocked": "Popup was blocked. Try again.",
+    "auth/network-request-failed": "Network error. Check your connection.",
+    "auth/invalid-api-key": "Firebase key is invalid.",
+  };
+  return map[err.code] || err.message || "Something went wrong.";
+}
+function showDebug(msg) {
+  const box = $("debugBox");
+  if (!box) return;
+  box.classList.remove("hide");
+  box.textContent = msg;
+}
+
+// ============================================================
+// CLOUDINARY UPLOAD
+// ============================================================
+async function uploadToCloudinary(file) {
+  if (!file) throw new Error("No file selected.");
+  if (!file.type.startsWith("image/")) throw new Error("Only image files allowed.");
+  if (file.size > 10 * 1024 * 1024) throw new Error("Photo must be under 10MB.");
+
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+  formData.append("folder", `marryme/${currentUser.uid}`);
+
+  const url = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`;
+  const res = await fetch(url, { method: "POST", body: formData });
+  const data = await res.json();
+
+  if (!res.ok || !data.secure_url) {
+    console.error("Cloudinary response:", data);
+    throw new Error(data?.error?.message || "Cloudinary upload failed");
+  }
+  return data.secure_url;
+}
+
+// ============================================================
+// SIGNUP — Critical: writes Firestore doc immediately
+// ============================================================
+$("signupForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const name = $("signupName").value.trim();
+  const email = $("signupEmail").value.trim();
+  const password = $("signupPassword").value;
+  const dob = $("signupDob").value;
+  const adult = $("signupAdult").checked;
+
+  if (!name || !email || !password || !dob) return toast("Please complete all fields.");
+  if (!validAdult(dob)) return toast("MarryMe is for adults 18+ only.");
+  if (!adult) return toast("You must confirm you are 18 or older.");
+  if (password.length < 6) return toast("Password must be 6+ characters.");
+
+  // Block the auth state listener from doing anything while we signup
+  isSigningUp = true;
+  showDebug("Signing up...");
+
+  try {
+    // 1. Sign out any existing session first
+    if (auth.currentUser) {
+      try { await auth.signOut(); } catch {}
+    }
+
+    // 2. Create the auth user
+    showDebug("Creating auth user...");
+    const result = await auth.createUserWithEmailAndPassword(email, password);
+    const user = result.user;
+    showDebug("Auth user created: " + user.uid);
+
+    // 3. Write the Firestore doc IMMEDIATELY — this is the critical step
+    showDebug("Writing user doc to Firestore...");
+    const userDoc = {
+      uid: user.uid,
+      name: name,
+      email: email,
+      dob: dob,
+      age: ageFromDob(dob),
+      isActive: true,
+      photos: [],
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    await db.collection("users").doc(user.uid).set(userDoc);
+    showDebug("✅ User doc saved to Firestore!\nUID: " + user.uid);
+
+    // 4. Update display name (non-critical)
+    await user.updateProfile({ displayName: name }).catch(() => {});
+
+    // 5. Send verification email (non-critical)
+    user.sendEmailVerification().catch(() => {});
+
+    toast("✅ Account created successfully!");
+    showDebug("✅ Signup complete.\n\nCheck Firebase Console → Firestore → users\nto verify the doc exists.");
+  } catch (err) {
+    console.error("Signup error:", err);
+    showDebug("❌ Signup error:\n" + err.code + "\n" + err.message);
+    toast(friendlyAuthError(err));
+  } finally {
+    // Give onAuthStateChanged a moment to catch up, then unblock
+    setTimeout(() => { isSigningUp = false; }, 2000);
+  }
+});
+
+// ============================================================
+// LOGIN
+// ============================================================
+$("loginForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const email = $("loginEmail").value.trim();
+  const password = $("loginPassword").value;
+  if (!email || !password) return toast("Enter email and password.");
+  try {
+    toast("Signing in...");
+    await auth.signInWithEmailAndPassword(email, password);
+  } catch (err) { toast(friendlyAuthError(err)); }
+});
+
+$("googleLoginBtn").addEventListener("click", async () => {
+  try {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    await auth.signInWithPopup(provider);
+  } catch (err) { toast(friendlyAuthError(err)); }
+});
+
+$("forgotPasswordBtn").addEventListener("click", async () => {
+  const email = $("loginEmail").value.trim();
+  if (!email) return toast("Enter your email first.");
+  try {
+    await auth.sendPasswordResetEmail(email);
+    toast("Reset email sent.");
+  } catch (err) { toast(friendlyAuthError(err)); }
+});
+
+$("showSignup").addEventListener("click", () => {
+  $("loginForm").classList.add("hide");
+  $("googleLoginBtn").classList.add("hide");
+  $("forgotPasswordBtn").classList.add("hide");
+  $("signupForm").classList.remove("hide");
+});
+$("showLogin").addEventListener("click", () => {
+  $("signupForm").classList.add("hide");
+  $("loginForm").classList.remove("hide");
+  $("googleLoginBtn").classList.remove("hide");
+  $("forgotPasswordBtn").classList.remove("hide");
+});
+
+$("logoutBtn").addEventListener("click", async () => {
+  try { await auth.signOut(); } catch (err) { toast("Logout failed."); }
+});
+
+// ============================================================
+// AUTH STATE
+// ============================================================
+auth.onAuthStateChanged(async (user) => {
+  // Ignore while signup is running (prevents clobbering)
+  if (isSigningUp) {
+    console.log("Auth state change ignored during signup");
+    return;
+  }
+
+  currentUser = user;
+
+  if (!user) {
+    $("authScreen").classList.remove("hide");
+    $("appScreen").classList.add("hide");
+    if (unsubscribeMatches) { unsubscribeMatches(); unsubscribeMatches = null; }
+    if (unsubscribeChat) { unsubscribeChat(); unsubscribeChat = null; }
+    seenMatchIds.clear();
+    return;
+  }
+
+  $("authScreen").classList.add("hide");
+  $("appScreen").classList.remove("hide");
+
+  try {
+    await ensureUserDocument();
+    await loadMyProfile();
+    await loadDiscover();
+    listenForMatches();
+    showTab("discoverTab");
+  } catch (err) {
+    console.error("Startup error:", err);
+    toast("Some data could not be loaded.");
+  }
+});
+
+async function ensureUserDocument() {
+  if (!currentUser) return;
+  const ref = db.collection("users").doc(currentUser.uid);
+
+  try {
+    const snap = await ref.get();
+
+    // Doc exists — do nothing, never overwrite
+    if (snap.exists) {
+      console.log("User doc exists:", currentUser.uid);
+      return;
+    }
+
+    // Doc missing — create a fallback (happens for Google sign-in users)
+    console.log("Creating fallback user doc for", currentUser.uid);
+    await ref.set({
+      uid: currentUser.uid,
+      name: currentUser.displayName || "MarryMe User",
+      email: currentUser.email || "",
+      isActive: true,
+      photos: [],
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  } catch (err) {
+    console.error("ensureUserDocument failed:", err);
+  }
+}
+
+// ============================================================
+// PROFILE
+// ============================================================
+async function loadMyProfile() {
+  if (!currentUser) return;
+  const snap = await db.collection("users").doc(currentUser.uid).get();
+  currentProfile = snap.exists ? { id: snap.id, ...snap.data() } : null;
+  renderMyProfile();
+}
+
+function renderMyProfile() {
+  const container = $("myProfile");
+  if (!container) return;
+  if (!currentProfile) {
+    container.innerHTML = `<div class="text-center p-8 text-gray-500">Loading...</div>`;
+    return;
+  }
+
+  const p = currentProfile;
+  const photos = Array.isArray(p.photos) ? p.photos : [];
+  const photo = photos[0] || "https://via.placeholder.com/300x300/ffb6c1/ffffff?text=No+Photo";
+  const age = p.age || ageFromDob(p.dob);
+  const completion = computeCompletion(p);
+
+  container.innerHTML = `
+    <div class="text-center">
+      <img src="${esc(photo)}" class="avatar" alt="You">
+      <h2 class="text-2xl font-bold mt-4">${esc(p.name || "Your Name")}${age ? `, ${age}` : ""}</h2>
+      ${p.occupation ? `<p class="text-gray-500 text-sm mt-1">${esc(p.occupation)}</p>` : ""}
+      ${p.city ? `<p class="text-gray-500 text-sm">📍 ${esc(p.city)}</p>` : ""}
+    </div>
+    <div class="mt-6">
+      <div class="flex justify-between text-xs text-gray-500 mb-2">
+        <span>Profile completion</span>
+        <span>${completion}%</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${completion}%"></div></div>
+    </div>
+    ${p.bio ? `<div class="mt-5 p-4 bg-gray-50 rounded-2xl"><p class="text-gray-700">${esc(p.bio)}</p></div>` : ""}
+    ${Array.isArray(p.interests) && p.interests.length ? `
+      <div class="mt-4 flex flex-wrap">
+        ${p.interests.map(i => `<span class="inline-flex px-3 py-1.5 rounded-full bg-gray-100 text-xs m-1">${esc(i)}</span>`).join("")}
+      </div>
+    ` : ""}
+    <button onclick="openProfileEditor()" class="w-full bgpink text-white py-3 rounded-xl font-bold mt-6">
+      <i class="fa-solid fa-camera mr-2"></i> Edit profile & photos
+    </button>
+    <div class="mt-4 p-3 bg-gray-50 rounded-xl text-xs text-gray-500">
+      <b>Your ID:</b> ${esc(p.uid || currentUser?.uid || "")}<br>
+      <b>Your email:</b> ${esc(p.email || currentUser?.email || "")}
+    </div>
+  `;
+}
+
+function computeCompletion(p) {
+  let score = 0;
+  if (p.name) score += 15;
+  if (p.dob) score += 15;
+  if (p.photos && p.photos.length >= 1) score += 25;
+  if (p.bio) score += 15;
+  if (p.city) score += 10;
+  if (p.occupation) score += 10;
+  if (p.intention) score += 10;
+  return Math.min(score, 100);
+}
+
+window.openProfileEditor = function() {
+  if (!currentProfile) return toast("Profile still loading.");
+  const p = currentProfile;
+  $("profileFullName").value = p.name || "";
+  $("profileDob").value = p.dob || "";
+  $("profileGender").value = p.gender || "";
+  $("profileCity").value = p.city || "";
+  $("profileOccupation").value = p.occupation || "";
+  $("profileIntention").value = p.intention || "";
+  $("profileChildren").value = p.childrenPreference || "";
+  $("profileBio").value = p.bio || "";
+  $("profileInterests").value = Array.isArray(p.interests) ? p.interests.join(", ") : (p.interests || "");
+  renderPhotoPreview();
+  openModal("profileModal");
+};
+
+function renderPhotoPreview() {
+  const box = $("photoPreview");
+  const photos = currentProfile?.photos || [];
+  if (!photos.length) {
+    box.innerHTML = `<p style="grid-column:1/-1; font-size:12px; color:#999; text-align:center; padding:10px;">No photos yet — tap "Add photo" below</p>`;
+    return;
+  }
+  box.innerHTML = photos.map((url, idx) => `
+    <div class="photo-tile">
+      <img src="${esc(url)}" alt="">
+      <button type="button" class="del" onclick="removePhoto(${idx})">✕</button>
+    </div>
+  `).join("");
+}
+
+window.removePhoto = async function(idx) {
+  if (!currentProfile) return;
+  const photos = [...(currentProfile.photos || [])];
+  photos.splice(idx, 1);
+  try {
+    await db.collection("users").doc(currentUser.uid).set({
+      photos,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+    await loadMyProfile();
+    renderPhotoPreview();
+    toast("Photo removed.");
+  } catch (err) { console.error(err); toast("Could not remove photo."); }
+};
+
+$("profileForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!currentUser) return;
+
+  const name = $("profileFullName").value.trim();
+  const dob = $("profileDob").value;
+  if (!name || !dob) return toast("Name and DOB are required.");
+  if (!validAdult(dob)) return toast("You must be 18+.");
+
+  const interestsText = $("profileInterests").value.trim();
+  const interests = interestsText ? interestsText.split(",").map(s => s.trim()).filter(Boolean) : [];
+
+  try {
+    await db.collection("users").doc(currentUser.uid).set({
+      name, dob, age: ageFromDob(dob),
+      gender: $("profileGender").value || "",
+      city: $("profileCity").value.trim(),
+      occupation: $("profileOccupation").value.trim(),
+      intention: $("profileIntention").value || "",
+      childrenPreference: $("profileChildren").value || "",
+      bio: $("profileBio").value.trim(),
+      interests,
+      isActive: true,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+
+    await loadMyProfile();
+    closeModal("profileModal");
+    toast("✅ Profile saved.");
+  } catch (err) { console.error(err); toast("Unable to save profile: " + err.message); }
+});
+
+// ============================================================
+// PHOTO UPLOAD
+// ============================================================
+$("profilePhotos").addEventListener("change", async (e) => {
+  if (!currentUser) return;
+  const files = Array.from(e.target.files || []);
+  if (!files.length) return;
+
+  const existing = Array.isArray(currentProfile?.photos) ? [...currentProfile.photos] : [];
+  if (existing.length + files.length > 6) {
+    toast("Max 6 photos total.");
+    e.target.value = "";
+    return;
+  }
+
+  try {
+    toast(`Uploading ${files.length} photo(s)...`);
+    for (const file of files) {
+      const url = await uploadToCloudinary(file);
+      existing.push(url);
+    }
+
+    await db.collection("users").doc(currentUser.uid).set({
+      photos: existing,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+
+    await loadMyProfile();
+    renderPhotoPreview();
+    toast(`✅ ${files.length} photo(s) uploaded!`);
+  } catch (err) {
+    console.error("Upload error:", err);
+    toast("Upload failed: " + err.message);
+  } finally {
+    e.target.value = "";
+  }
+});
+
+// ============================================================
+// DISCOVER
+// ============================================================
+async function loadDiscover(force = false) {
+  if (!currentUser) return;
+  const container = $("discoverList");
+  if (!container) return;
+
+  if (!force && discoverCache.length) return renderDiscover(discoverCache);
+
+  container.innerHTML = `
+    <div class="text-center p-8">
+      <div class="text-3xl pink">♥</div>
+      <p class="mt-3 text-gray-500">Finding compatible people...</p>
+    </div>`;
+
+  try {
+    const [blocksSnap, likesSnap, passesSnap] = await Promise.all([
+      db.collection("users").doc(currentUser.uid).collection("blocks").get(),
+      db.collection("users").doc(currentUser.uid).collection("likes").get(),
+      db.collection("users").doc(currentUser.uid).collection("passes").get()
+    ]);
+
+    const blocked = new Set(blocksSnap.docs.map(d => d.id));
+    const liked = new Set(likesSnap.docs.map(d => d.id));
+    const passed = new Set(passesSnap.docs.map(d => d.id));
+
+    const snap = await db.collection("users").where("isActive", "==", true).limit(100).get();
+    console.log("Total users in Firestore:", snap.size);
+
+    let candidates = snap.docs
+      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .filter(p => {
+        if (p.id === currentUser.uid) return false;
+        if (blocked.has(p.id)) return false;
+        if (liked.has(p.id)) return false;
+        if (passed.has(p.id)) return false;
+        return true;
+      });
+
+    console.log("Candidates after filter:", candidates.length);
+    candidates = applyFilters(candidates);
+    discoverCache = candidates;
+    renderDiscover(candidates);
+  } catch (err) {
+    console.error("Discover error:", err);
+    container.innerHTML = `
+      <div class="text-center p-8">
+        <p class="text-red-500">Unable to load profiles.</p>
+        <p class="text-xs text-gray-400 mt-2">${esc(err.message || "")}</p>
+        <button onclick="loadDiscover(true)" class="mt-4 px-5 py-3 rounded-xl bgpink text-white">Try Again</button>
+      </div>`;
+  }
+}
+window.loadDiscover = loadDiscover;
+
+function applyFilters(profiles) {
+  return profiles.filter(p => {
+    const age = p.age || ageFromDob(p.dob);
+    if (age && (age < currentFilters.minAge || age > currentFilters.maxAge)) return false;
+    if (currentFilters.gender && p.gender !== currentFilters.gender) return false;
+    if (currentFilters.intention && p.intention !== currentFilters.intention) return false;
+    return true;
+  });
+}
+
+function renderDiscover(profiles) {
+  const container = $("discoverList");
+  const count = $("discoverCount");
+  if (!container) return;
+
+  if (!profiles.length) {
+    currentCandidate = null;
+    if (count) count.textContent = "";
+    container.innerHTML = `
+      <div class="text-center p-8">
+        <div class="text-5xl mb-4">💗</div>
+        <h3 class="font-bold text-xl">No more profiles</h3>
+        <p class="text-gray-500 mt-2">Open the app in a second browser (Incognito) and create another account to test matching.</p>
+      </div>`;
+    return;
+  }
+
+  currentCandidate = profiles[0];
+  if (count) count.textContent = `${profiles.length} nearby`;
+
+  const p = profiles[0];
+  const age = p.age || ageFromDob(p.dob);
+  const photos = Array.isArray(p.photos) ? p.photos : [];
+  const photo = photos[0] || "https://via.placeholder.com/800x600/ffb6c1/ffffff?text=No+Photo";
+
+  container.innerHTML = `
+    <div class="bg-white rounded-3xl overflow-hidden shadow-xl">
+      <div class="relative">
+        <img src="${esc(photo)}" class="w-full h-[430px] object-cover" alt="">
+        <div class="absolute inset-x-0 bottom-0 p-6 text-white bg-gradient-to-t from-black/80 to-transparent">
+          <h2 class="text-2xl font-bold">${esc(p.name || "Unknown")}${age ? `, ${age}` : ""}</h2>
+          ${p.occupation ? `<p class="text-sm mt-1">${esc(p.occupation)}</p>` : ""}
+          ${p.city ? `<p class="text-sm opacity-90">📍 ${esc(p.city)}</p>` : ""}
+        </div>
+      </div>
+      <div class="p-5">
+        ${p.bio ? `<p class="text-gray-600 mb-4">${esc(p.bio)}</p>` : ""}
+        ${p.intention ? `<div class="inline-block bg-pink-50 text-pink-600 px-3 py-2 rounded-full text-sm">${esc(p.intention)}</div>` : ""}
+        <div class="grid grid-cols-3 gap-3 mt-5">
+          <button onclick="passCurrent()" class="rounded-2xl py-4 bg-gray-100 text-gray-700 font-semibold">
+            ✕<span class="block text-xs mt-1">Pass</span>
+          </button>
+          <button onclick="likeCurrent()" class="rounded-2xl py-4 bgpink text-white font-semibold">
+            ♥<span class="block text-xs mt-1">Like</span>
+          </button>
+          <button onclick="viewCurrentProfile()" class="rounded-2xl py-4 bg-purple-100 text-purple-700 font-semibold">
+            👤<span class="block text-xs mt-1">View</span>
+          </button>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ============================================================
+// LIKE — mutual match logic
+// ============================================================
+window.likeCurrent = async function() {
+  if (!currentUser) return toast("Please sign in.");
+  if (!currentCandidate) return toast("No profile available.");
+
+  const candidate = currentCandidate;
+
+  try {
+    console.log("Liking:", candidate.id);
+
+    // 1. Write my like
+    await db.collection("users").doc(currentUser.uid)
+      .collection("likes").doc(candidate.id).set({
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+    // 2. Check if they already liked me
+    const reverse = await db.collection("users").doc(candidate.id)
+      .collection("likes").doc(currentUser.uid).get();
+
+    if (reverse.exists) {
+      console.log("Mutual like detected! Creating match...");
+
+      // 3. Create the match
+      const ids = [currentUser.uid, candidate.id].sort();
+      const matchId = ids.join("_");
+
+      await db.collection("matches").doc(matchId).set({
+        userIds: ids,
+        active: true,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        lastMessageAt: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+
+      seenMatchIds.add(matchId);
+
+      // 4. Show match modal
+      showMatchModal(candidate, matchId);
+    } else {
+      toast(`You liked ${candidate.name || "them"} ❤️`);
+    }
+
+    // 5. Remove from cache and show next
+    discoverCache = discoverCache.filter(p => p.id !== candidate.id);
+    renderDiscover(discoverCache);
+  } catch (err) {
+    console.error("Like error:", err);
+    toast("Unable to like: " + err.message);
+  }
+};
+
+window.passCurrent = async function() {
+  if (!currentUser || !currentCandidate) return;
+  const candidate = currentCandidate;
+  try {
+    await db.collection("users").doc(currentUser.uid)
+      .collection("passes").doc(candidate.id).set({
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    discoverCache = discoverCache.filter(p => p.id !== candidate.id);
+    renderDiscover(discoverCache);
+  } catch (err) { console.error(err); toast("Unable to pass."); }
+};
+
+window.viewCurrentProfile = function() {
+  if (!currentCandidate) return;
+  const p = currentCandidate;
+  const age = p.age || ageFromDob(p.dob);
+  const photos = Array.isArray(p.photos) ? p.photos : [];
+  const photo = photos[0] || "https://via.placeholder.com/800x600/ffb6c1/ffffff?text=No+Photo";
+
+  $("viewProfileContent").innerHTML = `
+    <div>
+      <img src="${esc(photo)}" class="w-full h-80 object-cover rounded-2xl" alt="">
+      <h2 class="text-2xl font-bold mt-5">${esc(p.name || "Unknown")}${age ? `, ${age}` : ""}</h2>
+      ${p.occupation ? `<p class="text-gray-500 mt-1">${esc(p.occupation)}</p>` : ""}
+      ${p.city ? `<p class="text-gray-500">📍 ${esc(p.city)}</p>` : ""}
+      ${p.bio ? `<p class="mt-5 text-gray-700">${esc(p.bio)}</p>` : ""}
+      <button onclick="likeCurrent(); closeModal('viewProfileModal')" class="w-full mt-6 py-4 rounded-2xl bgpink text-white font-bold">
+        ❤️ Like ${esc(p.name || "Profile")}
+      </button>
+    </div>`;
+  openModal("viewProfileModal");
+};
+
+window.openFilters = function() {
+  $("filterMinAge").value = currentFilters.minAge;
+  $("filterMaxAge").value = currentFilters.maxAge;
+  $("filterGender").value = currentFilters.gender;
+  $("filterIntention").value = currentFilters.intention;
+  openModal("filterModal");
+};
+
+$("filterForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  currentFilters = {
+    minAge: Number($("filterMinAge").value) || 18,
+    maxAge: Number($("filterMaxAge").value) || 80,
+    gender: $("filterGender").value || "",
+    intention: $("filterIntention").value || ""
+  };
+  closeModal("filterModal");
+  discoverCache = [];
+  await loadDiscover(true);
+});
+
+// ============================================================
+// MATCH MODAL
+// ============================================================
+function showMatchModal(profile, matchId) {
+  $("matchName").textContent = profile.name || "them";
+  $("matchMyPhoto").src = currentProfile?.photos?.[0] || "https://via.placeholder.com/150/ffb6c1/ffffff?text=You";
+  $("matchTheirPhoto").src = profile.photos?.[0] || "https://via.placeholder.com/150/ffb6c1/ffffff?text=?";
+
+  const btn = $("matchSendBtn");
+  if (btn) {
+    btn.onclick = () => {
+      closeModal("matchModal");
+      showTab("matchesTab");
+      if (matchId) setTimeout(() => openChat(matchId), 300);
+    };
+  }
+
+  openModal("matchModal");
+}
+
+// ============================================================
+// MATCHES LISTENER
+// ============================================================
+function listenForMatches() {
+  if (!currentUser) return;
+  if (unsubscribeMatches) unsubscribeMatches();
+
+  unsubscribeMatches = db.collection("matches")
+    .where("userIds", "array-contains", currentUser.uid)
+    .onSnapshot(async (snap) => {
+      const matches = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+      // Show match modal for NEW matches
+      snap.docChanges().forEach(async (change) => {
+        if (change.type !== "added") return;
+        const matchId = change.doc.id;
+        if (seenMatchIds.has(matchId)) return;
+        seenMatchIds.add(matchId);
+
+        const matchData = change.doc.data();
+        // Skip if we just created it ourselves
+        if (matchData.createdAt) {
+          const created = matchData.createdAt.toDate ? matchData.createdAt.toDate() : new Date(matchData.createdAt);
+          const secondsAgo = (Date.now() - created.getTime()) / 1000;
+          if (secondsAgo < 3) return;
+        }
+
+        const otherId = matchData.userIds.find(id => id !== currentUser.uid);
+        const otherSnap = await db.collection("users").doc(otherId).get();
+        if (otherSnap.exists) {
+          showMatchModal({ id: otherId, ...otherSnap.data() }, matchId);
+        }
+      });
+
+      await renderMatches(matches);
+    }, (err) => console.error("Matches listener:", err));
+}
+
+async function getOtherUser(match) {
+  if (!match.userIds) return null;
+  const otherId = match.userIds.find(id => id !== currentUser.uid);
+  if (!otherId) return null;
+  const snap = await db.collection("users").doc(otherId).get();
+  if (!snap.exists) return null;
+  return { id: snap.id, ...snap.data() };
+}
+
+async function renderMatches(matches) {
+  const container = $("matchesList");
+  if (!container) return;
+
+  if (!matches.length) {
+    container.innerHTML = `
+      <div class="col-span-2 text-center p-8">
+        <div class="text-5xl">💞</div>
+        <h3 class="font-bold text-xl mt-4">No matches yet</h3>
+        <p class="text-gray-500 mt-2">When two people like each other, the match appears here.</p>
+      </div>`;
+    return;
+  }
+
+  const users = [];
+  for (const match of matches) {
+    const u = await getOtherUser(match);
+    if (u) users.push({ match, user: u });
+  }
+
+  container.innerHTML = users.map(({ match, user }) => {
+    const photo = user.photos?.[0] || "https://via.placeholder.com/300x300/ffb6c1/ffffff?text=?";
+    return `
+      <button onclick="openChat('${esc(match.id)}')" class="text-left bg-white rounded-2xl overflow-hidden shadow">
+        <img src="${esc(photo)}" class="w-full h-48 object-cover" alt="">
+        <div class="p-3"><strong>${esc(user.name || "Match")}</strong></div>
+      </button>`;
+  }).join("");
+
+  await renderChatList(users);
+}
+
+async function renderChatList(users) {
+  const container = $("chatList");
+  if (!container) return;
+
+  if (!users.length) {
+    container.innerHTML = `<div class="text-center p-8 text-gray-500">Your conversations will appear here.</div>`;
+    return;
+  }
+
+  container.innerHTML = users.map(({ match, user }) => {
+    const photo = user.photos?.[0] || "";
+    return `
+      <button onclick="openChat('${esc(match.id)}')" class="w-full flex items-center gap-3 p-4 border-b text-left">
+        ${photo
+          ? `<img src="${esc(photo)}" class="w-14 h-14 rounded-full object-cover">`
+          : `<div class="w-14 h-14 rounded-full bg-pink-100 flex items-center justify-center">❤️</div>`}
+        <div class="flex-1">
+          <strong>${esc(user.name || "Match")}</strong>
+          <p class="text-sm text-gray-500">Tap to chat</p>
+        </div>
+      </button>`;
+  }).join("");
+}
+
+// ============================================================
+// CHAT
+// ============================================================
+window.openChat = async function(matchId) {
+  if (!currentUser) return;
+  currentChatMatch = matchId;
+  if (unsubscribeChat) { unsubscribeChat(); unsubscribeChat = null; }
+
+  try {
+    const matchSnap = await db.collection("matches").doc(matchId).get();
+    if (!matchSnap.exists) return toast("Match not found.");
+    const match = matchSnap.data();
+
+    if (!match.userIds || !match.userIds.includes(currentUser.uid)) {
+      return toast("You do not have access to this chat.");
+    }
+
+    const otherId = match.userIds.find(id => id !== currentUser.uid);
+    const otherSnap = await db.collection("users").doc(otherId).get();
+    const other = otherSnap.exists ? otherSnap.data() : {};
+
+    $("chatTitle").textContent = other.name || "Chat";
+    openModal("chatModal");
+
+    unsubscribeChat = db.collection("matches").doc(matchId)
+      .collection("messages")
+      .orderBy("createdAt", "asc")
+      .onSnapshot(
+        snap => renderMessages(snap.docs),
+        err => { console.error("Chat listener:", err); toast("Unable to load messages."); }
+      );
+  } catch (err) { console.error(err); toast("Unable to open chat."); }
+};
+
+function renderMessages(docs) {
+  const container = $("chatMessages");
+  if (!container) return;
+
+  if (!docs.length) {
+    container.innerHTML = `<div class="text-center text-gray-400 py-10">Say hello 👋</div>`;
+    return;
+  }
+
+  container.innerHTML = docs.map(doc => {
+    const m = doc.data();
+    const mine = m.senderId === currentUser.uid;
+    return `
+      <div class="flex ${mine ? "justify-end" : "justify-start"} mb-3">
+        <div class="${mine ? "bgpink text-white" : "bg-gray-100 text-gray-800"} px-4 py-3 rounded-2xl max-w-[80%]">
+          <div>${esc(m.text)}</div>
+          <div class="text-[10px] opacity-70 mt-1">${fmtTime(m.createdAt)}</div>
+        </div>
+      </div>`;
+  }).join("");
+
+  container.scrollTop = container.scrollHeight;
+}
+
+$("chatForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!currentUser || !currentChatMatch) return;
+  const input = $("chatInput");
+  const text = input.value.trim();
+  if (!text) return;
+  try {
+    input.disabled = true;
+    await db.collection("matches").doc(currentChatMatch).collection("messages").add({
+      senderId: currentUser.uid,
+      text,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    await db.collection("matches").doc(currentChatMatch).update({
+      lastMessageAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    input.value = "";
+  } catch (err) { console.error(err); toast("Unable to send message."); }
+  finally { input.disabled = false; input.focus(); }
+});
+
+window.blockCurrentChatUser = async function() {
+  if (!currentUser || !currentChatMatch) return;
+  try {
+    const matchSnap = await db.collection("matches").doc(currentChatMatch).get();
+    if (!matchSnap.exists) return;
+    const otherId = matchSnap.data().userIds.find(id => id !== currentUser.uid);
+    if (!otherId) return;
+    await db.collection("users").doc(currentUser.uid)
+      .collection("blocks").doc(otherId).set({
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    await db.collection("matches").doc(currentChatMatch).delete().catch(() => {});
+    closeModal("chatModal");
+    toast("User blocked.");
+    discoverCache = [];
+    await loadDiscover(true);
+  } catch (err) { console.error(err); toast("Unable to block user."); }
+};
+
+window.unmatchCurrentChat = async function() {
+  if (!currentChatMatch) return;
+  try {
+    await db.collection("matches").doc(currentChatMatch).delete();
+    closeModal("chatModal");
+    toast("Match removed.");
+  } catch (err) { console.error(err); toast("Unable to remove match."); }
+};
+
+window.reportCurrentChatUser = async function() {
+  if (!currentUser || !currentChatMatch) return;
+  const reason = prompt("Why are you reporting this user?");
+  if (!reason || !reason.trim()) return;
+  try {
+    const matchSnap = await db.collection("matches").doc(currentChatMatch).get();
+    if (!matchSnap.exists) return;
+    const otherId = matchSnap.data().userIds.find(id => id !== currentUser.uid);
+    if (!otherId) return;
+    await db.collection("reports").add({
+      reporterId: currentUser.uid,
+      targetId: otherId,
+      reason: reason.trim().slice(0, 500),
+      status: "pending",
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    toast("Report submitted. Thank you.");
+  } catch (err) { console.error(err); toast("Unable to submit report."); }
+};
+
+// ============================================================
+// TABS
+// ============================================================
+function showTab(tabName) {
+  document.querySelectorAll(".tab").forEach(el => {
+    el.classList.toggle("active", el.id === tabName);
+  });
+  document.querySelectorAll(".navbtn").forEach(el => {
+    el.classList.toggle("active", el.dataset.target === tabName);
+  });
+  if (tabName === "discoverTab") loadDiscover();
+  if (tabName === "profileTab") loadMyProfile();
+}
+window.showTab = showTab;
+
+document.querySelectorAll(".navbtn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const target = btn.dataset.target;
+    if (target) showTab(target);
+  });
+});
+
+document.querySelectorAll(".modal").forEach(modal => {
+  modal.addEventListener("click", e => {
+    if (e.target === modal) modal.classList.add("hide");
+  });
+});
+
+console.log("MarryMe loaded.");
+</script>
+</body>
+</html>
